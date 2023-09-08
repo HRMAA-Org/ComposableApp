@@ -22,12 +22,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import com.adikul.hrmaa.ui.theme.HRMAATheme
+import com.google.android.gms.auth.api.identity.Identity
 
 class HomeActivity : ComponentActivity() {
+    private val googleAuthClient by lazy {
+        GoogleAuthClient(
+            context = applicationContext,
+            oneTapClient = Identity.getSignInClient(applicationContext)
+        )
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            DefaultPreview2()
+            var name = googleAuthClient.getSignedInUser()?.username
+            name = name?.substring(0, name.indexOf(' '))
+            Home(name = name ?: "User")
         }
     }
 }
@@ -37,6 +46,7 @@ fun prevSeshCard(date: String, min: Int){
     Card(
         backgroundColor = Color.White,
         modifier = Modifier
+            .padding(vertical = 8.dp)
             .clip(shape = RoundedCornerShape(12.dp))
             .fillMaxWidth()
     ) {
@@ -76,7 +86,7 @@ fun prevSeshCard(date: String, min: Int){
 }
 
 @Composable
-fun Home() {
+fun Home(name: String) {
     ConstraintLayout(
         modifier = Modifier
             .padding(vertical = 64.dp, horizontal = 36.dp)
@@ -93,7 +103,7 @@ fun Home() {
                 color = Color(0xFF061428)
             )
             Text(
-                text = "Aditya!",
+                text = "$name!",
                 fontFamily = FontFamily(Font(R.font.dmsans_bold)),
                 fontSize = 36.sp,
                 color = Color(0xFF061428)
@@ -149,7 +159,7 @@ fun Home() {
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.SpaceAround, modifier = Modifier.constrainAs(prev){
+        Column(verticalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.constrainAs(prev){
             top.linkTo(recCard.bottom, margin = 48.dp)
         }) {
             Text(
@@ -199,7 +209,7 @@ fun DefaultPreview2() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colors.background
         ) {
-            Home()
+            Home("User")
         }
     }
 }

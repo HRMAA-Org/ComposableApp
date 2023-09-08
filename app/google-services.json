@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "380871043206",
+    "project_id": "hrmaa-new",
+    "storage_bucket": "hrmaa-new.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:380871043206:android:de311ef8c01c27166d4907",
+        "android_client_info": {
+          "package_name": "com.adikul.hrmaa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "380871043206-uk152jrltpl5bunr8gurgep32cjgs2bj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXO73vXRa9sNgBNiIN45peDfJXg65-0sc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "380871043206-uk152jrltpl5bunr8gurgep32cjgs2bj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
