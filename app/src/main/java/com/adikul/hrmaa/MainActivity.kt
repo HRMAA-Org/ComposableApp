@@ -47,10 +47,10 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val googleAuthClient by lazy {
         GoogleAuthClient(
-            context = applicationContext,
             oneTapClient = Identity.getSignInClient(applicationContext)
         )
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -60,14 +60,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    if(googleAuthClient.getSignedInUser() != null){
+                    if (googleAuthClient.getSignedInUser() != null) {
                         val intent = Intent(this@MainActivity, HomeActivity::class.java)
                         startActivity(intent)
                     }
                     val launcher = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.StartIntentSenderForResult(),
                         onResult = { result ->
-                            if(result.resultCode == RESULT_OK){
+                            if (result.resultCode == RESULT_OK) {
                                 lifecycleScope.launch {
                                     val signInResult = googleAuthClient.signInWithIntent(
                                         intent = result.data ?: return@launch
@@ -98,62 +98,50 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Welcome(onSignInClick: () -> Unit) {
-    val context = LocalContext.current
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(backgroundColor = Color.Black, contentColor = Color.White,  onClick = {val intent = Intent(context, HomeActivity::class.java)
-            context.startActivity(intent)}) {
-                /* FAB content */
-                Icon(
-                    painterResource(id = R.drawable.right),
-                    "Next",
-                    Modifier.size(24.dp)
-                )
-            }
-        }
-    ) { contentPadding ->
-        // Screen content
-        Column(
-            Modifier
-                .padding(horizontal = 36.dp, vertical = 120.dp)
-                .fillMaxSize(), verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.Start) {
+    // Screen content
+    Column(
+        Modifier
+            .padding(horizontal = 36.dp, vertical = 120.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = Alignment.Start
+    ) {
+        Image(
+            painterResource(id = R.mipmap.main_logo),
+            "Logo",
+            Modifier.size(320.dp)
+        )
+        Text(
+            text = "Welcome to \nHRMAA!",
+            fontFamily = FontFamily(Font(R.font.dmsans_bold)),
+            fontSize = 36.sp,
+            color = Color(0xFF061428)
+        )
+        Spacer(modifier = Modifier.size(20.dp))
+        Button(
+            shape = RoundedCornerShape(12.dp),
+            onClick = onSignInClick,
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
+        ) {
             Image(
-                painterResource(id = R.mipmap.main_logo),
-                "Logo",
-                Modifier.size(320.dp)
+                painterResource(id = R.drawable.google_logo),
+                contentDescription = "Google Sign in",
+                modifier = Modifier
+                    .padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
+                    .size(size = 16.dp)
             )
             Text(
-                text = "Welcome to \nHRMAA!",
-                fontFamily = FontFamily(Font(R.font.dmsans_bold)),
-                fontSize = 36.sp,
-                color = Color(0xFF061428)
+                text = "Sign in with Google",
+                fontFamily = FontFamily(Font(R.font.jost_bold)),
+                fontSize = 13.sp,
+                color = Color(0xFF061428),
+                modifier = Modifier.padding(start = 10.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
             )
-            Spacer(modifier = Modifier.size(20.dp))
-            Button(
-                shape = RoundedCornerShape(12.dp),
-                onClick = onSignInClick,
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color.White)
-            ) {
-                Image(
-                    painterResource(id = R.drawable.google_logo),
-                    contentDescription = "Google Sign in",
-                    modifier = Modifier
-                        .padding(start = 8.dp, top = 8.dp, bottom = 8.dp)
-                        .size(size = 16.dp)
-                )
-                Text(
-                    text = "Sign in with Google",
-                    fontFamily = FontFamily(Font(R.font.jost_bold)),
-                    fontSize = 13.sp,
-                    color = Color(0xFF061428),
-                    modifier = Modifier.padding(start = 10.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
-                )
-            }
         }
     }
 }
 
-@Preview(showBackground = true, device = Devices.PIXEL_4_XL,showSystemUi = true)
+@Preview(showBackground = true, device = Devices.PIXEL_4_XL, showSystemUi = true)
 @Composable
 fun DefaultPreview() {
     HRMAATheme {
@@ -162,7 +150,7 @@ fun DefaultPreview() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colors.background
         ) {
-
+            Welcome(onSignInClick = {})
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.adikul.hrmaa
 
-import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
@@ -14,7 +13,6 @@ import kotlinx.coroutines.tasks.await
 import java.util.concurrent.CancellationException
 
 class GoogleAuthClient(
-    private val context: Context,
     private val oneTapClient: SignInClient
 ) {
     private val auth = Firebase.auth
@@ -42,8 +40,8 @@ class GoogleAuthClient(
             val userId: String = user?.uid.toString()
             val df: DocumentReference = fstore.collection("users").document(userId)
             val userInfo = hashMapOf<String, String>()
-            userInfo.put("name", user?.displayName.toString())
-            userInfo.put("email", user?.email.toString())
+            userInfo["name"] = user?.displayName.toString()
+            userInfo["email"] = user?.email.toString()
             df.set(userInfo)
             SignInResult(
                 data = user?.run {

@@ -1,5 +1,6 @@
 package com.adikul.hrmaa
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -27,7 +29,6 @@ import com.google.android.gms.auth.api.identity.Identity
 class HomeActivity : ComponentActivity() {
     private val googleAuthClient by lazy {
         GoogleAuthClient(
-            context = applicationContext,
             oneTapClient = Identity.getSignInClient(applicationContext)
         )
     }
@@ -87,6 +88,7 @@ fun prevSeshCard(date: String, min: Int){
 
 @Composable
 fun Home(name: String) {
+    val context = LocalContext.current
     ConstraintLayout(
         modifier = Modifier
             .padding(vertical = 64.dp, horizontal = 36.dp)
@@ -178,7 +180,10 @@ fun Home(name: String) {
                 centerHorizontallyTo(parent)
             },
             shape = RoundedCornerShape(12.dp),
-            onClick = { /*TODO*/ },
+            onClick = {
+                val intent = Intent(context, RestActivity::class.java)
+                context.startActivity(intent)
+            },
             colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0F67FE))
         ) {
             Text(
