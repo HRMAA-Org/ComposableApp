@@ -1,5 +1,6 @@
 package com.adikul.hrmaa
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -25,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import com.adikul.hrmaa.ui.theme.HRMAATheme
 import com.google.android.gms.auth.api.identity.Identity
+import java.io.BufferedReader
+import java.net.Socket
 
 class HomeActivity : ComponentActivity() {
     private val googleAuthClient by lazy {
@@ -181,7 +184,8 @@ fun Home(name: String) {
             },
             shape = RoundedCornerShape(12.dp),
             onClick = {
-                val intent = Intent(context, RestActivity::class.java)
+                val context : Context = context
+                val intent = Intent(context, RunActivity::class.java)
                 context.startActivity(intent)
             },
             colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0F67FE))
