@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Paint.Align
 import android.net.ConnectivityManager
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -48,8 +50,19 @@ import com.adikul.hrmaa.ui.theme.HRMAATheme
 import kotlinx.coroutines.delay
 import java.security.Permissions
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.Button
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.chaquo.python.PyObject
+import com.chaquo.python.Python
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.*
+import java.net.Socket
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class RunActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,11 +88,84 @@ private var dist = 0.02
 fun Run() {
     var timeLeft by remember { mutableStateOf(0.000) }
     var isPaused by remember { mutableStateOf(false) }
+    var py : Python;
+    var module : PyObject;
+    val coroutineScope = rememberCoroutineScope()
 
+    // TODO: Pass client Socket from previous activity
+    var clientSocket :Socket
+    val context : Context = LocalContext.current
+
+    val folder =
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+    val fileName1 = "HR_${
+        SimpleDateFormat(" yyyy-MM-dd - HH_mm_ss runing", Locale.US)
+            .format(System.currentTimeMillis())
+    }.txt"
+    val file1 = File(folder, fileName1)
+    val fileBuffWrit =  FileOutputStream(file1, true).bufferedWriter()
+
+    //Yeh blocking he kya?  for the rest of the code?
     LaunchedEffect(key1 = timeLeft, key2 = isPaused) {
-        while (timeLeft < 60 && !isPaused) {
-            delay(1L)
-            timeLeft+=0.001
+
+        coroutineScope.launch(Dispatchers.Default) {
+            py = Python.getInstance()
+//            module = py.getModule("heartpy_script")
+        }
+    }
+    Button(
+        content = null,
+        onClick = {
+            coroutineScope.launch(Dispatchers.Default) {
+                py = Python.getInstance()
+//            module = py.getModule("heartpy_script")
+            }
+        }
+    )
+
+
+    val i_wont_change = 0;
+    LaunchedEffect( i_wont_change) {
+
+        coroutineScope.launch(Dispatchers.Default) {
+            while (timeLeft < 60 && !isPaused) {
+                delay(1L)
+                timeLeft+=0.001
+            }
+        }
+
+        try{
+            //this automatically binds to the server, no need to send separate connect request.
+            /*
+            IMP all write and read calls in TCP sockets are blocking
+            see: https://stackoverflow.com/questions/10574596/is-an-outputstream-in-java-blocking-sockets
+             */
+            val buffRead = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
+            val buffWrit = BufferedWriter(OutputStreamWriter(clientSocket.getOutputStream()))
+
+            val jsonObj = getCommandJSON("send_for_time", 12, "One off", Date().time.toString())
+            Log.d("JSON string",jsonObj.toString() )
+            buffWrit.write(jsonObj.toString())
+            /*
+            Must flush
+            While you are trying to write data to a Stream using the BufferedWriter object, after invoking the write() method the data will be buffered initially, nothing will be printed. The flush() method is used to push the contents of the buffer to the underlying Stream.
+             */
+            buffWrit.flush()
+
+            receiveForTime( context ,buffRead, fileBuffWrit, 12 ,"One off", "All in smoke" )
+
+            buffWrit.write(getCommandJSON("stop", 12, "One off", Date().time.toString()).toString())
+            buffWrit.flush()
+
+            buffRead.close()
+            buffWrit.close()
+            //Don't close client socket, pass it on instead
+            fileBuffWrit.close()
+            Log.d("readSuccessful","Read success")
+        }
+        catch (e : IOException){
+
+            Log.e("Error", e.toString());
         }
 
     }
