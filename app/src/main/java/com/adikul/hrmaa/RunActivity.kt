@@ -1,11 +1,13 @@
 package com.adikul.hrmaa
 
+import android.content.Context
 import android.graphics.Paint.Align
-import android.os.Build
+import android.net.ConnectivityManager
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,14 +42,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.core.content.getSystemService
+//import androidx.core.content.ContextCompat.getSystemService
 import com.adikul.hrmaa.ui.theme.HRMAATheme
-import com.google.type.DateTime
 import kotlinx.coroutines.delay
-import java.math.RoundingMode
-import java.time.LocalDateTime
-import java.util.Date
+import java.security.Permissions
+import androidx.activity.result.contract.ActivityResultContracts
+import org.json.JSONObject
+import java.io.*
 
-class RestActivity : ComponentActivity() {
+class RunActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -57,26 +61,25 @@ class RestActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Rest()
+                    Run()
                 }
             }
         }
     }
 }
-private var dist = 0.02
-val startTime = System.currentTimeMillis()/1000.0
-@Composable
-fun Rest() {
 
-    var timeLeft by remember { mutableStateOf(System.currentTimeMillis()/1000.0 - startTime) }
+private val EOF = "</HRMAA>"
+
+private var dist = 0.02
+@Composable
+fun Run() {
+    var timeLeft by remember { mutableStateOf(0.000) }
     var isPaused by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = timeLeft, key2 = isPaused) {
-        while (!isPaused) {
-            val diff = timeLeft - (System.currentTimeMillis()/1000.0 - startTime)
-            delay(100L - diff.toLong())
-            timeLeft = System.currentTimeMillis()/1000.0 - startTime
-            timeLeft = timeLeft.toBigDecimal().setScale(3, RoundingMode.UP).toDouble()
+        while (timeLeft < 60 && !isPaused) {
+            delay(1L)
+            timeLeft+=0.001
         }
 
     }
@@ -85,7 +88,7 @@ fun Rest() {
         modifier = Modifier
             .fillMaxHeight()
     ) {
-        val (bg, shiny, restText, distCard) = createRefs()
+        val (bg, shiny, RunText, distCard) = createRefs()
         Box(
             modifier = Modifier.constrainAs(bg) {
                 top.linkTo(parent.top)
@@ -112,13 +115,13 @@ fun Rest() {
                 }
         )
         Text(
-            text = "Rest!",
+            text = "Run!",
             fontFamily = FontFamily(Font(R.font.dmsans_bold)),
             fontSize = 20.sp,
             color = Color(0xFF3D4966),
             modifier = Modifier
                 .padding(all = 16.dp)
-                .constrainAs(restText) {
+                .constrainAs(RunText) {
                     top.linkTo(shiny.bottom)
                     centerHorizontallyTo(parent)
                 }
@@ -326,8 +329,85 @@ fun Rest() {
 
 @Preview(showBackground = true, device = Devices.PIXEL_4_XL, showSystemUi = true)
 @Composable
-fun RestPreview() {
+fun RunPreview() {
     HRMAATheme {
-        Rest()
+        Run()
     }
+}
+
+private fun isNetworkAvailable(context: Context): Boolean {
+    val connectivityManager =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val activeNetworkInfo = connectivityManager.activeNetworkInfo
+    return activeNetworkInfo != null && activeNetworkInfo.isConnected
+}
+
+private val PERMISSIONS_ABOVE_Q = arrayOf(
+    android.Manifest.permission.INTERNET,
+    android.Manifest.permission.ACCESS_NETWORK_STATE,
+    // Add other permissions as needed for Android 10 or higher
+)
+
+private val PERMISSIONS_BELOW_Q =
+    arrayOf(
+        android.Manifest.permission.INTERNET,
+        android.Manifest.permission.ACCESS_NETWORK_STATE,
+        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        android.Manifest.permission.READ_EXTERNAL_STORAGE,
+
+        )
+
+//private val requestPermissionLauncher =
+//    registerForActivityResult(
+//        ActivityResultContracts.RequestMultiplePermissions()
+//    )
+//    {
+//        Log.d("Permissions", it.toString())
+//        for( perm in PERMISSIONS_ABOVE_Q){
+//            if( it[perm] == false){
+//                Toast.makeText(this,"Please provide required permissions", Toast.LENGTH_SHORT).show()
+//                finish()
+//            }
+//        }
+//        Toast.makeText(this, "Permission granted", Toast.LENGTH_SHORT).show();
+//    }
+
+private fun receiveForTime(context: Context, buffRead: BufferedReader, fileBuffWriter: BufferedWriter, time_s : Int, header : String, footer : String) : Int{
+    var fileDat : String = ""
+    var currStr : String? = ""
+
+    try{
+        while ( true) {
+
+            if( currStr == EOF ){
+                break
+            }
+            Log.d("CurrStr", currStr.toString())
+            fileDat = currStr + "\n"
+            fileBuffWriter.write(fileDat)
+            fileBuffWriter.flush()
+            /*
+            Null is there when no string is received before any of the termination condition.
+            The readLine() method is designed to block until one of the following conditions is met:
+            It reads a line of text (terminated by a newline character \n or carriage return/line feed \r\n).
+            It reaches the end of the stream (the sender closes the connection or sends an EOF).
+            It encounters an exception, such as an IOException.
+             */
+            currStr = buffRead.readLine()
+        }
+        return 0
+    }
+    catch ( e: IOException){
+        Log.e("BuffRead error", e.message.toString())
+        context.run {
+            Toast.makeText(this, e.message.toString(), Toast.LENGTH_LONG).show()
+        }
+
+        return -1
+    }
+}
+
+private fun getCommandJSON( cmd : String, time : Int, header: String, footer: String) : JSONObject{
+    var m : MutableMap< Any?, Any?> = mutableMapOf( Pair("cmd", cmd), Pair("time",time), Pair("header",header), Pair("footer",footer))
+    return JSONObject( m)
 }
