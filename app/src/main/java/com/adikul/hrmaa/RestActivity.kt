@@ -1,8 +1,13 @@
 package com.adikul.hrmaa
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.graphics.Paint.Align
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.annotation.RequiresApi
@@ -27,11 +32,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -42,10 +49,22 @@ import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import com.adikul.hrmaa.ui.theme.HRMAATheme
 import com.google.type.DateTime
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.math.RoundingMode
+import java.net.Socket
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.Date
+import java.util.Locale
 
 class RestActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,17 +87,87 @@ val startTime = System.currentTimeMillis()/1000.0
 @Composable
 fun Rest() {
 
-    var timeLeft by remember { mutableStateOf(System.currentTimeMillis()/1000.0 - startTime) }
+    val activity = (LocalContext.current as? Activity)
+    val time = 60
+    val ip_address = "10.70.44.140"
+    val context : Context = LocalContext.current
+    var timeLeft by remember { mutableStateOf(0.000) }
     var isPaused by remember { mutableStateOf(false) }
+    var heartRate by remember { mutableStateOf(0) }
+//    var py : Python;
+//    var module : PyObject;
+    val coroutineScope = rememberCoroutineScope()
+
+    val folder =
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+    val fileName1 = "HR_${
+        SimpleDateFormat(" yyyy-MM-dd - HH_mm_ss", Locale.US)
+            .format(System.currentTimeMillis())
+    } rest ${SessionSharedPref.getSessionNum(context)}.txt"
+    val file = File(folder, fileName1 )
+    val fileBuffWrit =  FileOutputStream(file, true).bufferedWriter()
+
+    LaunchedEffect( Unit ){
+        coroutineScope.launch(Dispatchers.IO){
+            var clientSocket : Socket = Socket(ip_address, 80) //10.70.100.133:80
+
+            if(isNetworkAvailable(context)) {
+                try {
+                    //this automatically binds to the server, no need to send separate connect request.
+                    /*
+                IMP all write and read calls in TCP sockets are blocking
+                see: https://stackoverflow.com/questions/10574596/is-an-outputstream-in-java-blocking-sockets
+                 */
+                    val buffRead = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
+                    val buffWrit =
+                        BufferedWriter(OutputStreamWriter(clientSocket.getOutputStream()))
+
+                    val jsonObj =
+                        getCommandJSON("send_for_time", time, "One off", Date().time.toString())
+                    Log.d("JSON string", jsonObj.toString())
+                    buffWrit.write(jsonObj.toString())
+                    /*
+                    Must flush
+                    While you are trying to write data to a Stream using the BufferedWriter object, after invoking the write() method the data will be buffered initially, nothing will be printed. The flush() method is used to push the contents of the buffer to the underlying Stream.
+                     */
+                    buffWrit.flush()
+
+                    receiveForTime(context, buffRead, fileBuffWrit )
+
+                    buffWrit.write(
+                        getCommandJSON(
+                            "stop",
+                            12,
+                            "One off",
+                            Date().time.toString()
+                        ).toString()
+                    )
+                    buffWrit.flush()
+
+                    buffRead.close()
+                    buffWrit.close()
+                    //Don't close client socket, pass it on instead
+                    fileBuffWrit.close()
+                    Log.d("readSuccessful", "Read success")
+                    SessionSharedPref.setSessionNum(context, SessionSharedPref.getSessionNum(context)+1 )
+                    activity?.finish()
+
+                } catch (e: IOException) {
+
+                    Log.e("Error", e.toString());
+                }
+            }
+        }
+    }
 
     LaunchedEffect(key1 = timeLeft, key2 = isPaused) {
-        while (!isPaused) {
-            val diff = timeLeft - (System.currentTimeMillis()/1000.0 - startTime)
-            delay(100L - diff.toLong())
-            timeLeft = System.currentTimeMillis()/1000.0 - startTime
-            timeLeft = timeLeft.toBigDecimal().setScale(3, RoundingMode.UP).toDouble()
-        }
 
+        coroutineScope.launch(Dispatchers.Default) {
+            while (timeLeft < time  && !isPaused) {
+                delay(1L)
+                timeLeft+=0.001
+            }
+        }
     }
 
     ConstraintLayout(

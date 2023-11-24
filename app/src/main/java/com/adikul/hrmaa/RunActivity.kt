@@ -1,6 +1,8 @@
 package com.adikul.hrmaa
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.Environment
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
+import androidx.compose.material.contentColorFor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -56,6 +59,8 @@ import java.net.Socket
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.adikul.hrmaa.*
+import java.util.Properties
 
 class RunActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,11 +79,14 @@ class RunActivity : ComponentActivity() {
     }
 }
 
-private val EOF = "</HRMAA>"
+val EOF = "</HRMAA>"
 
 private var dist = 0.02
 @Composable
 fun Run() {
+    val activity = (LocalContext.current as? Activity)
+    val time = 60
+    val ip_address = "10.70.44.140"
     val context : Context = LocalContext.current
     var timeLeft by remember { mutableStateOf(0.000) }
     var isPaused by remember { mutableStateOf(false) }
@@ -93,7 +101,7 @@ fun Run() {
     val fileName1 = "HR_${
         SimpleDateFormat(" yyyy-MM-dd - HH_mm_ss", Locale.US)
             .format(System.currentTimeMillis())
-    } running.txt"
+    } run ${SessionSharedPref.getSessionNum(context)}.txt"
     val file1 = File(folder, fileName1)
     val fileBuffWrit =  FileOutputStream(file1, true).bufferedWriter()
 
@@ -105,9 +113,9 @@ fun Run() {
 //        }
 //    }
 
-    LaunchedEffect(key1 = heartRate){
+    LaunchedEffect( Unit ){
         coroutineScope.launch(Dispatchers.IO){
-            var clientSocket :Socket = Socket("10.70.44.140", 80) //10.70.100.133:80
+            var clientSocket :Socket = Socket(ip_address, 80)
 
             if(isNetworkAvailable(context)) {
                 try {
@@ -121,7 +129,7 @@ fun Run() {
                         BufferedWriter(OutputStreamWriter(clientSocket.getOutputStream()))
 
                     val jsonObj =
-                        getCommandJSON("send_for_time", 12, "One off", Date().time.toString())
+                        getCommandJSON("send_for_time", time, "One off", Date().time.toString())
                     Log.d("JSON string", jsonObj.toString())
                     buffWrit.write(jsonObj.toString())
                     /*
@@ -130,7 +138,7 @@ fun Run() {
                  */
                     buffWrit.flush()
 
-                    receiveForTime(context, buffRead, fileBuffWrit, 12, "One off", "All in smoke")
+                    receiveForTime(context, buffRead, fileBuffWrit)
 
                     buffWrit.write(
                         getCommandJSON(
@@ -147,6 +155,11 @@ fun Run() {
                     //Don't close client socket, pass it on instead
                     fileBuffWrit.close()
                     Log.d("readSuccessful", "Read success")
+
+                    val intent = Intent(context, RestActivity::class.java)
+                    context.startActivity( intent)
+                    activity?.finish()
+
                 } catch (e: IOException) {
 
                     Log.e("Error", e.toString());
@@ -158,7 +171,7 @@ fun Run() {
     LaunchedEffect(key1 = timeLeft, key2 = isPaused) {
 
         coroutineScope.launch(Dispatchers.Default) {
-            while (timeLeft < 60  && !isPaused) {
+            while (timeLeft < time  && !isPaused) {
                 delay(1L)
                 timeLeft+=0.001
             }
@@ -173,6 +186,7 @@ fun Run() {
         Box(
             modifier = Modifier.constrainAs(bg) {
                 top.linkTo(parent.top)
+
             }
         ) {
             Image(
@@ -417,79 +431,3 @@ fun RunPreview() {
     }
 }
 
-private fun isNetworkAvailable(context: Context): Boolean {
-    val connectivityManager =
-        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val activeNetworkInfo = connectivityManager.activeNetworkInfo
-    return activeNetworkInfo != null && activeNetworkInfo.isConnected
-}
-
-private val PERMISSIONS_ABOVE_Q = arrayOf(
-    android.Manifest.permission.INTERNET,
-    android.Manifest.permission.ACCESS_NETWORK_STATE,
-    // Add other permissions as needed for Android 10 or higher
-)
-
-private val PERMISSIONS_BELOW_Q =
-    arrayOf(
-        android.Manifest.permission.INTERNET,
-        android.Manifest.permission.ACCESS_NETWORK_STATE,
-        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
-        android.Manifest.permission.READ_EXTERNAL_STORAGE,
-
-        )
-
-//private val requestPermissionLauncher =
-//    registerForActivityResult(
-//        ActivityResultContracts.RequestMultiplePermissions()
-//    )
-//    {
-//        Log.d("Permissions", it.toString())
-//        for( perm in PERMISSIONS_ABOVE_Q){
-//            if( it[perm] == false){
-//                Toast.makeText(this,"Please provide required permissions", Toast.LENGTH_SHORT).show()
-//                finish()
-//            }
-//        }
-//        Toast.makeText(this, "Permission granted", Toast.LENGTH_SHORT).show();
-//    }
-
-private fun receiveForTime(context: Context, buffRead: BufferedReader, fileBuffWriter: BufferedWriter, time_s : Int, header : String, footer : String) : Int{
-    var fileDat : String = ""
-    var currStr : String? = ""
-
-    try{
-        while ( true) {
-
-            if( currStr == EOF ){
-                break
-            }
-            Log.d("CurrStr", currStr.toString())
-            fileDat = currStr + "\n"
-            fileBuffWriter.write(fileDat)
-            fileBuffWriter.flush()
-            /*
-            Null is there when no string is received before any of the termination condition.
-            The readLine() method is designed to block until one of the following conditions is met:
-            It reads a line of text (terminated by a newline character \n or carriage return/line feed \r\n).
-            It reaches the end of the stream (the sender closes the connection or sends an EOF).
-            It encounters an exception, such as an IOException.
-             */
-            currStr = buffRead.readLine()
-        }
-        return 0
-    }
-    catch ( e: IOException){
-        Log.e("BuffRead error", e.message.toString())
-        context.run {
-            Toast.makeText(this, e.message.toString(), Toast.LENGTH_LONG).show()
-        }
-
-        return -1
-    }
-}
-
-private fun getCommandJSON( cmd : String, time : Int, header: String, footer: String) : JSONObject{
-    var m : MutableMap< Any?, Any?> = mutableMapOf( Pair("cmd", cmd), Pair("time",time), Pair("header",header), Pair("footer",footer))
-    return JSONObject( m)
-}

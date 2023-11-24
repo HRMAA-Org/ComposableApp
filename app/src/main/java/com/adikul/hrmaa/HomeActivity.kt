@@ -89,6 +89,12 @@ fun prevSeshCard(date: String, min: Int){
     }
 }
 
+@Preview
+@Composable
+fun previewPrevSession(){
+    prevSeshCard("Date", 10)
+}
+
 @Composable
 fun Home(name: String) {
     val context = LocalContext.current
@@ -221,4 +227,13 @@ fun DefaultPreview2() {
             Home("User")
         }
     }
+}
+
+fun getSessions( context : Context){
+    val num_sessions = SessionSharedPref.getSessionNum(context = context)
+    var sess_arr = mutableListOf<Sessions>()
+    for( i in 1..num_sessions){
+
+    }
+
 }
